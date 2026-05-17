@@ -178,12 +178,25 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-button.ghost {
-  margin-top: 10px;
-  background: transparent;
-  border: 1px solid var(--accent);
-  color: #c7b8ff;
-  font-weight: 600;
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-group input {
+  width: 100%;
+}
+
+.spinner-inline {
+  position: absolute;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .enriched {

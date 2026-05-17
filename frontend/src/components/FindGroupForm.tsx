@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, EventPreview, MatchResult, User } from "../api";
 
 export default function FindGroupForm({
@@ -25,21 +25,47 @@ export default function FindGroupForm({
   const [busy, setBusy] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [preview, setPreview] = useState<EventPreview | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function fetchDetails() {
+  // Auto-fetch when URL changes (debounced)
+  useEffect(() => {
     const url = ev.external_url.trim();
-    if (!url || fetching) return;
+    if (!url || !isValidUrl(url)) {
+      setPreview(null);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchDetails(url), 800);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [ev.external_url]);
+
+  function isValidUrl(str: string): boolean {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function fetchDetails(url?: string) {
+    const urlToFetch = url || ev.external_url.trim();
+    if (!urlToFetch || fetching) return;
     setFetching(true);
     setErr("");
     try {
-      const p = await api.previewEvent(url);
+      const p = await api.previewEvent(urlToFetch);
       setPreview(p);
-      setEv((cur) => ({
-        ...cur,
-        title: p.title || cur.title,
-        category: p.category || cur.category,
-        location: p.location || cur.location,
-      }));
+      if (!p.error) {
+        setEv((cur) => ({
+          ...cur,
+          title: p.title || cur.title,
+          category: p.category || cur.category,
+          location: p.location || cur.location,
+        }));
+      }
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -82,15 +108,13 @@ export default function FindGroupForm({
         Paste the event you're eyeing and tell us the kind of group you want.
       </p>
       <label>Event link
-        <input required type="url" placeholder="https://tickets..."
-          value={ev.external_url}
-          onBlur={fetchDetails}
-          onChange={(e) => setEv({ ...ev, external_url: e.target.value })} />
+        <div className="input-group">
+          <input required type="url" placeholder="https://tickets..."
+            value={ev.external_url}
+            onChange={(e) => setEv({ ...ev, external_url: e.target.value })} />
+          {fetching && <span className="spinner-inline" />}
+        </div>
       </label>
-      <button type="button" className="ghost" onClick={fetchDetails}
-        disabled={fetching || !ev.external_url.trim()}>
-        {fetching ? "Reading event…" : "Fetch event details"}
-      </button>
 
       {preview && !preview.error && (
         <div className="enriched">
@@ -111,8 +135,8 @@ export default function FindGroupForm({
                 : ""}
             </p>
             {preview.match_key && (
-              <p className="muted">
-                Cross-platform match key: <code>{preview.match_key}</code>
+              <p className="muted" style={{ fontSize: "11px" }}>
+                Match key: <code>{preview.match_key}</code>
               </p>
             )}
           </div>
