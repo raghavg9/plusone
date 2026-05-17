@@ -16,8 +16,8 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -109,7 +109,7 @@ def scrape(url: str) -> dict:
 
 
 async def _ai_normalize(scraped: dict) -> dict | None:
-    if not DEEPSEEK_API_KEY:
+    if not GEMINI_API_KEY:
         return None
     prompt = (
         "You normalize event listings so the same real-world event from "
@@ -121,26 +121,27 @@ async def _ai_normalize(scraped: dict) -> dict | None:
         "lowercase canonical id of the form "
         "'<performer-or-title-slug>|<city-slug>|<YYYY-MM-DD>' that is "
         "identical for the same event regardless of platform. "
-        "Return ONLY the JSON object.\n\n"
+        "Return ONLY valid JSON, no markdown.\n\n"
         f"Scraped data:\n{json.dumps(scraped, ensure_ascii=False)[:4000]}"
     )
     try:
         async with httpx.AsyncClient(timeout=25) as client:
             resp = await client.post(
-                DEEPSEEK_URL,
-                headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json",
-                },
+                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+                headers={"Content-Type": "application/json"},
                 json={
-                    "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1,
-                    "response_format": {"type": "json_object"},
+                    "contents": [
+                        {
+                            "parts": [{"text": prompt}],
+                        }
+                    ],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                    },
                 },
             )
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"]
+        content = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(content)
     except Exception:
         return None
