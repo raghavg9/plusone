@@ -1,6 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}`
-  : "/api";
+const BASE = "https://plusonebackend-production.up.railway.app";
 
 export interface User {
   id: number;
