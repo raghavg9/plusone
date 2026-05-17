@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = "https://plusonebackend-production.up.railway.app";
 
 export interface User {
   id: number;
@@ -19,6 +19,29 @@ export interface Event {
   category: string;
   location: string;
   starts_at: string | null;
+  performer?: string;
+  venue?: string;
+  city?: string;
+  description?: string;
+  image_url?: string;
+  match_key?: string;
+  ai_enriched?: boolean;
+}
+
+export interface EventPreview {
+  external_url: string;
+  title: string;
+  category: string;
+  location: string;
+  starts_at: string | null;
+  performer: string;
+  venue: string;
+  city: string;
+  description: string;
+  image_url: string;
+  match_key: string;
+  ai_enriched: boolean;
+  error?: string | null;
 }
 
 export interface Group {
@@ -59,6 +82,11 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
 export const api = {
   createUser: (data: Partial<User>) =>
     req<User>("/users", { method: "POST", body: JSON.stringify(data) }),
+  previewEvent: (url: string) =>
+    req<EventPreview>("/events/preview", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
   createEvent: (data: Partial<Event>) =>
     req<Event>("/events", { method: "POST", body: JSON.stringify(data) }),
   createMatchRequest: (data: Record<string, unknown>) =>

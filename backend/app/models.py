@@ -38,11 +38,21 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True)
-    external_url = Column(String, nullable=False, unique=True)
+    external_url = Column(String, nullable=False)
     title = Column(String, nullable=False)
     category = Column(String, default="other")
     location = Column(String, default="")
     starts_at = Column(DateTime, nullable=True)
+    # Enrichment fields used to match the same real-world event across
+    # different ticketing / discovery platforms.
+    performer = Column(String, default="")
+    venue = Column(String, default="")
+    city = Column(String, default="")
+    description = Column(Text, default="")
+    image_url = Column(String, default="")
+    match_key = Column(String, index=True, default="")
+    source_urls = Column(Text, default="")
+    ai_enriched = Column(Boolean, default=False)
     created_at = Column(DateTime, default=_now)
 
 

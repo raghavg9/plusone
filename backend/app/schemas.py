@@ -35,6 +35,32 @@ class EventCreate(BaseModel):
     category: str = "other"
     location: str = ""
     starts_at: Optional[datetime] = None
+    performer: str = ""
+    venue: str = ""
+    city: str = ""
+    description: str = ""
+    image_url: str = ""
+    match_key: str = ""
+
+
+class EventPreviewIn(BaseModel):
+    url: str
+
+
+class EventPreview(BaseModel):
+    external_url: str
+    title: str = ""
+    category: str = "other"
+    location: str = ""
+    starts_at: Optional[datetime] = None
+    performer: str = ""
+    venue: str = ""
+    city: str = ""
+    description: str = ""
+    image_url: str = ""
+    match_key: str = ""
+    ai_enriched: bool = False
+    error: Optional[str] = None
 
 
 class EventOut(BaseModel):
@@ -46,6 +72,13 @@ class EventOut(BaseModel):
     category: str
     location: str
     starts_at: Optional[datetime]
+    performer: str = ""
+    venue: str = ""
+    city: str = ""
+    description: str = ""
+    image_url: str = ""
+    match_key: str = ""
+    ai_enriched: bool = False
 
 
 class MatchRequestCreate(BaseModel):
