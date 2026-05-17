@@ -98,6 +98,13 @@ button {
 
 button:disabled { opacity: 0.6; cursor: default; }
 
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: #c7b8ff;
+  margin-top: 10px;
+}
+
 .badge {
   display: inline-block;
   background: rgba(124, 92, 255, 0.18);

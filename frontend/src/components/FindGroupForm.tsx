@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { api, EventPreview, MatchResult, User } from "../api";
 
 export default function FindGroupForm({
@@ -25,30 +25,7 @@ export default function FindGroupForm({
   const [busy, setBusy] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [preview, setPreview] = useState<EventPreview | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-fetch when URL changes (debounced)
-  useEffect(() => {
-    const url = ev.external_url.trim();
-    if (!url || !isValidUrl(url)) {
-      setPreview(null);
-      return;
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchDetails(url), 800);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [ev.external_url]);
-
-  function isValidUrl(str: string): boolean {
-    try {
-      new URL(str);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 
   async function fetchDetails(url?: string) {
     const urlToFetch = url || ev.external_url.trim();
@@ -115,6 +92,13 @@ export default function FindGroupForm({
           {fetching && <span className="spinner-inline" />}
         </div>
       </label>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => fetchDetails()}
+        disabled={fetching || !ev.external_url.trim()}>
+        {fetching ? "Fetching…" : "Fetch Event Details"}
+      </button>
 
       {preview && !preview.error && (
         <div className="enriched">
