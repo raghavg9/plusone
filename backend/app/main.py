@@ -2,10 +2,11 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import matching, models, schemas
-from .database import Base, engine, get_db
+from . import event_enrich, matching, models, schemas
+from .database import Base, engine, ensure_schema, get_db
 
 Base.metadata.create_all(bind=engine)
+ensure_schema()
 
 app = FastAPI(title="PlusOne — Social Coordination Layer for Events")
 
@@ -41,16 +42,41 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 
 # --------------------------------------------------------------- events
+@app.post("/events/preview", response_model=schemas.EventPreview)
+async def preview_event(payload: schemas.EventPreviewIn):
+    """Fetch + AI-normalize a pasted event link without persisting it."""
+    return await event_enrich.enrich(payload.url)
+
+
 @app.post("/events", response_model=schemas.EventOut)
 def create_event(payload: schemas.EventCreate, db: Session = Depends(get_db)):
-    existing = (
-        db.query(models.Event)
-        .filter(models.Event.external_url == payload.external_url)
-        .first()
-    )
+    # Same real-world event across different platforms collapses to one
+    # matchable Event via match_key; fall back to exact-URL dedupe.
+    existing = None
+    if payload.match_key:
+        existing = (
+            db.query(models.Event)
+            .filter(models.Event.match_key == payload.match_key)
+            .first()
+        )
+    if not existing:
+        existing = (
+            db.query(models.Event)
+            .filter(models.Event.external_url == payload.external_url)
+            .first()
+        )
     if existing:
+        urls = set(filter(None, (existing.source_urls or "").split(",")))
+        if payload.external_url not in urls:
+            urls.add(payload.external_url)
+            existing.source_urls = ",".join(sorted(urls))
+            db.commit()
+            db.refresh(existing)
         return existing
-    event = models.Event(**payload.model_dump())
+
+    event = models.Event(
+        **payload.model_dump(), source_urls=payload.external_url
+    )
     db.add(event)
     db.commit()
     db.refresh(event)

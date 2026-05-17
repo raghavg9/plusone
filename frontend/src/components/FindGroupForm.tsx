@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, MatchResult, User } from "../api";
+import { api, EventPreview, MatchResult, User } from "../api";
 
 export default function FindGroupForm({
   user,
@@ -23,13 +23,45 @@ export default function FindGroupForm({
   });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [preview, setPreview] = useState<EventPreview | null>(null);
+
+  async function fetchDetails() {
+    const url = ev.external_url.trim();
+    if (!url || fetching) return;
+    setFetching(true);
+    setErr("");
+    try {
+      const p = await api.previewEvent(url);
+      setPreview(p);
+      setEv((cur) => ({
+        ...cur,
+        title: p.title || cur.title,
+        category: p.category || cur.category,
+        location: p.location || cur.location,
+      }));
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setFetching(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
     setBusy(true);
     try {
-      const event = await api.createEvent(ev);
+      const event = await api.createEvent({
+        ...ev,
+        performer: preview?.performer || "",
+        venue: preview?.venue || "",
+        city: preview?.city || "",
+        description: preview?.description || "",
+        image_url: preview?.image_url || "",
+        match_key: preview?.match_key || "",
+        starts_at: preview?.starts_at || null,
+      });
       const result = await api.createMatchRequest({
         user_id: user.id,
         event_id: event.id,
@@ -52,8 +84,41 @@ export default function FindGroupForm({
       <label>Event link
         <input required type="url" placeholder="https://tickets..."
           value={ev.external_url}
+          onBlur={fetchDetails}
           onChange={(e) => setEv({ ...ev, external_url: e.target.value })} />
       </label>
+      <button type="button" className="ghost" onClick={fetchDetails}
+        disabled={fetching || !ev.external_url.trim()}>
+        {fetching ? "Reading event…" : "Fetch event details"}
+      </button>
+
+      {preview && !preview.error && (
+        <div className="enriched">
+          {preview.image_url && (
+            <img src={preview.image_url} alt="" className="enriched-img" />
+          )}
+          <div>
+            <span className="badge small">
+              {preview.ai_enriched ? "AI-detected" : "Detected"}
+            </span>
+            <strong>{preview.title || "Untitled event"}</strong>
+            <p className="muted">
+              {[preview.performer, preview.venue, preview.city]
+                .filter(Boolean)
+                .join(" · ")}
+              {preview.starts_at
+                ? ` · ${new Date(preview.starts_at).toLocaleDateString()}`
+                : ""}
+            </p>
+            {preview.match_key && (
+              <p className="muted">
+                Cross-platform match key: <code>{preview.match_key}</code>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {preview?.error && <p className="err">{preview.error}</p>}
       <div className="row">
         <label>Event name
           <input required value={ev.title}
